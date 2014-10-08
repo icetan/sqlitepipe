@@ -1,7 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <fcntl.h>
 #include <unistd.h>
 
 #include <sqlite3ext.h>
@@ -30,12 +29,6 @@ int pipes[NUM_PIPES][2];
 
 #define BUF_SIZE (4096)
 
-static void write_file(char *fn, char *data, size_t size) {
-  FILE *fp = fopen(fn , "wb");
-  fwrite(data , sizeof(char), size, fp);
-  fclose(fp);
-}
-
 static ssize_t read_fd(char **out, int fd) {
   size_t len = 0;
   size_t size = BUF_SIZE;
@@ -55,6 +48,7 @@ static ssize_t read_fd(char **out, int fd) {
   }
   if (count < 0) {
     perror("IO Error\n");
+    free(tmp);
     return -1;
   }
 
@@ -106,7 +100,7 @@ static ssize_t shell(char **out, char *cmd, char *data, size_t size) {
     int status;
     waitpid(pid, &status, 0);
     if (status != 0) {
-      perror("child process");
+      perror("child exit code not 0");
       return -1;
     }
 
