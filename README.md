@@ -21,18 +21,13 @@ To download and compile the C code:
 ```sh
 git clone https://github.com/icetan/sqlitepipe
 cd sqlitepipe
-make
+make && make install
 ```
 
-This will create the `pipe.sqlext` binary which will be loadable from SQLite.
+This will create the extension binary and add a load command to your
+`~/.sqliterc` which will auto load `sqlitepipe` every time you run `sqlite`.
 
 ## Usage
-
-Load the SQLite extension:
-
-```sql
-SELECT load_extension('pipe.sqlext');
-```
 
 The `pipe` function should now be registered in your SQLite session. The
 signature looks like this:
