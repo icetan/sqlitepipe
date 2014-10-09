@@ -9,10 +9,21 @@ Inspired by defunct
 
 SQLite 3 with dynamic extension loading enabled.
 
-On OS X you can install `sqlite3` with `brew` to get support for extensions,
-but don't forget that it won't override the default `sqlite3` command. You need
+### OS X
+
+```sh
+brew install sqlite3
+```
+
+Don't forget that `brew` won't override the default OS X supplied `sqlite3`. You need
 to run it with `$(brew --prefix sqlite3)/bin/sqlite3` or add `$(brew --prefix
 sqlite3)/bin` to your `PATH`.
+
+### Ubuntu / Debian
+
+```sh
+apt-get install sqlite3 libsqlite3-dev
+```
 
 ## Installation
 
