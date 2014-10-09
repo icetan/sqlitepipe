@@ -11,15 +11,22 @@ ifeq ($(UNAME_S),Darwin)
 	SUFFIX=dylib
 endif
 
-OBJECT=pipe.$(SUFFIX)
+SOURCE=sqlitepipe.c
+OBJECT=$(SOURCE:.c=.$(SUFFIX))
 
-$(OBJECT): sqlitepipe.c
+SQLITERC_HEADER=-- Auto load sqlitepipe
+
+$(OBJECT): $(SOURCE)
 	$(CC) $(CFLAGS) -o $@ $<
 
 all: $(OBJECT)
 
-.PHONY: clean install
-install:
+.PHONY: uninstall install clean
+uninstall:
+	sed -i '' '/^$(SQLITERC_HEADER)/{N;d;}' ~/.sqliterc &> /dev/null; true
+
+install: uninstall
+	echo $(SQLITERC_HEADER) >> ~/.sqliterc
 	echo .load `pwd`/$(OBJECT) >> ~/.sqliterc
 
 clean:
