@@ -15,8 +15,6 @@ SQLITE_EXTENSION_INIT1
 #define PARENT_WRITE_PIPE  0
 #define PARENT_READ_PIPE   1
 
-int pipes[NUM_PIPES][2];
-
 // Always in a pipe[], pipe[0] is for read and pipe[1] is for write
 #define READ_FD  0
 #define WRITE_FD 1
@@ -57,6 +55,7 @@ static ssize_t read_fd(char **out, int fd) {
 }
 
 static ssize_t shell(char **out, char *cmd, char *data, size_t size) {
+  int pipes[NUM_PIPES][2];
   char *argv[] = { "/bin/sh", "-c", cmd, 0 };
   pid_t pid;
   ssize_t outSize;
