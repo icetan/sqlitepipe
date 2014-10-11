@@ -87,7 +87,7 @@ INSERT INTO checksums SELECT id, pipe('md5', data) FROM files;
 
 Hash plain text passwords using OpenSSL:
 
-```sh
+```sql
 UPDATE users SET pw=pipe('openssl passwd -1 -stdin', pw);
 ```
 
