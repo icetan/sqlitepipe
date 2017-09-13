@@ -23,7 +23,7 @@ all: $(OBJECT)
 
 .PHONY: uninstall install clean
 uninstall:
-	sed -i '' '/^$(SQLITERC_HEADER)/{N;d;}' ~/.sqliterc &> /dev/null; true
+	sed -i'' '/^$(SQLITERC_HEADER)/{N;d;}' ~/.sqliterc &> /dev/null || true
 
 install: uninstall
 	echo $(SQLITERC_HEADER) >> ~/.sqliterc
