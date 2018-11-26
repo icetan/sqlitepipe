@@ -55,9 +55,8 @@ static ssize_t read_fd(char **out, int fd) {
   return len;
 }
 
-static ssize_t shell(char **out, char *cmd, char *data, size_t size) {
+static ssize_t execCmd(char **out, char **argv, char *data, size_t size) {
   int pipes[NUM_PIPES][2];
-  char *argv[] = { "/bin/sh", "-c", cmd, 0 };
   pid_t pid;
   ssize_t outSize;
 
@@ -108,6 +107,12 @@ static ssize_t shell(char **out, char *cmd, char *data, size_t size) {
   }
 }
 
+static ssize_t shell(char **out, char *cmd, char *data, size_t size) {
+  char *argv[] = { "/bin/sh", "-c", cmd, 0 };
+  return execCmd(out, argv, data, size);
+}
+
+
 static void pipeFunc(
   sqlite3_context *context,
   int argc,
@@ -140,6 +145,42 @@ static void pipeFunc(
   }
 }
 
+static void execFunc(
+  sqlite3_context *context,
+  int argc,
+  sqlite3_value **argv
+) {
+  if (argc < 2) {
+    sqlite3_result_error(context, "Error too few arguments to exec()", -1);
+    return;
+  }
+
+  char *data = (char*)sqlite3_value_blob(argv[0]);
+  size_t dataSize = sqlite3_value_bytes(argv[0]);
+
+  char *cmdArgs[argc];
+  char buf[255];
+  for (int i = 1; i < argc; i++) {
+    char *cmd = (char*)sqlite3_value_text(argv[i]);
+    size_t cmdLen = sqlite3_value_bytes(argv[i]);
+    cmdArgs[i - 1] = (char*) malloc(sizeof(char) * cmdLen);
+    memcpy(cmdArgs[i - 1], cmd, cmdLen);
+    cmdArgs[i - 1][cmdLen] = '\0';
+  }
+  cmdArgs[argc - 1] = 0;
+
+  char *done;
+  ssize_t doneSize = execCmd(&done, cmdArgs, data, dataSize);
+
+  if (doneSize >= 0) {
+    sqlite3_result_blob(context, done, doneSize, SQLITE_TRANSIENT);
+    free(done);
+  } else {
+    sqlite3_result_error(context, "Error when executing pipe command", -1);
+  }
+  for (int i = 0; i < argc - 1; i++) free(cmdArgs[i]);
+}
+
 // SQLite invokes this routine once when it loads the extension. Create new
 // functions, collating sequences, and virtual table modules here.  This is
 // usually the only exported symbol in the shared library.
@@ -151,5 +192,7 @@ int sqlite3_extension_init(
   SQLITE_EXTENSION_INIT2(pApi)
   sqlite3_create_function(db, "pipe", 1, SQLITE_UTF8, 0, pipeFunc, 0, 0);
   sqlite3_create_function(db, "pipe", 2, SQLITE_UTF8, 0, pipeFunc, 0, 0);
+
+  sqlite3_create_function(db, "exec", -1, SQLITE_UTF8, 0, execFunc, 0, 0);
   return 0;
 }
