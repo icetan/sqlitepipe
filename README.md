@@ -47,57 +47,66 @@ The `pipe` function should now be registered in your SQLite session. The
 signature looks like this:
 
 ```
-BLOB pipe(TEXT cmd [, BLOB stdin]);
+BLOB pipe(NULL | BLOB stdin, TEXT cmd [, TEXT argN..]);
 ```
 
-The first parameter should be a string and will be evaluated with `/bin/sh -c`.
-The second parameter which is optional will be piped to `sh` through `STDIN`.
-The `STDOUT` from `sh` will then be captured and returned from `pipe` as `BLOB`.
+The data from the first argument will be piped to `STDIN` of the program defined
+in the second argument. The first argument can also be set to `NULL` for no
+`STDIN`. The second argument defines what program should be executed and each
+following argument will be set as arguments to that program on execution.
+The `STDOUT` from the program will then be captured and returned from `pipe` as
+`BLOB`.
 
 ## Examples
 
 Hello world! Meow~!
 
 ```sql
-SELECT pipe('cat', 'Hello world!');
+SELECT pipe('Hello world!', '/usr/bin/cat');
 ```
 
 Use power math!
 
 ```sql
-SELECT pipe('bc', '2^12' || x'0A');
+SELECT pipe('2^12' || x'0A', '/usr/bin/bc');
 ```
 
 Insert files as blobs:
 
 ```sql
 CREATE TABLE files (id INTEGER PRIMARY KEY AUTOINCREMENT, data BLOB);
-INSERT INTO files (data) VALUES (pipe('cat ./file.bin'));
+INSERT INTO files (data) VALUES (pipe(NULL, '/usr/bin/cat', './file.bin'));
 ```
 
 Export blobs as files:
 
 ```sql
-SELECT pipe('cat > ./file-' || id, data) FROM files;
+SELECT pipe(data, '/usr/bin/cp', '/dev/stdin', './file-' || id) FROM files;
 ```
 
 Create a table with MD5 checksums from file blobs:
 
 ```sql
 CREATE TABLE checksums (id INT, md5 TEXT);
-INSERT INTO checksums SELECT id, pipe('md5', data) FROM files;
+INSERT INTO checksums SELECT id, pipe(data, '/usr/bin/md5sum') FROM files;
+```
+
+Shell out to `bash`:
+
+```sql
+SELECT pipe(data, '/usr/bin/bash', '-c', 'grep "^1234" | sort | uniq | wc') FROM files;
 ```
 
 Hash plain text passwords using OpenSSL:
 
 ```sql
-UPDATE users SET pw=pipe('openssl passwd -1 -stdin', pw);
+UPDATE users SET pw=pipe(pw, '/usr/bin/openssl', 'passwd', '-1', '-stdin');
 ```
 
 Compress PNG images in MBTiles to JPEG using ImageMagick:
 
 ```sql
-UPDATE images SET tile_data=pipe('convert -format jpg -quality 90% png:- jpg:-', tile_data);
+UPDATE images SET tile_data=pipe(tile_data, '/usr/bin/convert', '-format', 'jpg', '-quality', '90%', 'png:-', 'jpg:-');
 VACUUM images;
 ```
 

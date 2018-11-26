@@ -107,51 +107,13 @@ static ssize_t execCmd(char **out, char **argv, char *data, size_t size) {
   }
 }
 
-static ssize_t shell(char **out, char *cmd, char *data, size_t size) {
-  char *argv[] = { "/bin/sh", "-c", cmd, 0 };
-  return execCmd(out, argv, data, size);
-}
-
-
 static void pipeFunc(
   sqlite3_context *context,
   int argc,
   sqlite3_value **argv
 ) {
-  char *data;
-  size_t dataSize = 0;
-
-  char *cmd = (char*)sqlite3_value_text(argv[0]);
-  size_t cmdLen = sqlite3_value_bytes(argv[0]);
-  char cmdStr[cmdLen+1];
-  memcpy(cmdStr, cmd, cmdLen);
-  cmdStr[cmdLen] = '\0';
-
-  if (argc == 2) {
-    // If invoked with two arguments, set dataSize so that data will be piped
-    // to the child process' stdin
-    data = (char*)sqlite3_value_blob(argv[1]);
-    dataSize = sqlite3_value_bytes(argv[1]);
-  }
-
-  char *done;
-  ssize_t doneSize = shell(&done, cmdStr, data, dataSize);
-
-  if (doneSize >= 0) {
-    sqlite3_result_blob(context, done, doneSize, SQLITE_TRANSIENT);
-    free(done);
-  } else {
-    sqlite3_result_error(context, "Error when executing pipe command", -1);
-  }
-}
-
-static void execFunc(
-  sqlite3_context *context,
-  int argc,
-  sqlite3_value **argv
-) {
   if (argc < 2) {
-    sqlite3_result_error(context, "Error too few arguments to exec()", -1);
+    sqlite3_result_error(context, "Too few arguments to pipe(), two or more required", -1);
     return;
   }
 
@@ -159,15 +121,10 @@ static void execFunc(
   size_t dataSize = sqlite3_value_bytes(argv[0]);
 
   char *cmdArgs[argc];
-  char buf[255];
-  for (int i = 1; i < argc; i++) {
-    char *cmd = (char*)sqlite3_value_text(argv[i]);
-    size_t cmdLen = sqlite3_value_bytes(argv[i]);
-    cmdArgs[i - 1] = (char*) malloc(sizeof(char) * cmdLen);
-    memcpy(cmdArgs[i - 1], cmd, cmdLen);
-    cmdArgs[i - 1][cmdLen] = '\0';
+  for (int i = 0; i < argc-1; i++) {
+    cmdArgs[i] = (char*)sqlite3_value_text(argv[i+1]);
   }
-  cmdArgs[argc - 1] = 0;
+  cmdArgs[argc-1] = 0;
 
   char *done;
   ssize_t doneSize = execCmd(&done, cmdArgs, data, dataSize);
@@ -176,9 +133,8 @@ static void execFunc(
     sqlite3_result_blob(context, done, doneSize, SQLITE_TRANSIENT);
     free(done);
   } else {
-    sqlite3_result_error(context, "Error when executing pipe command", -1);
+    sqlite3_result_error(context, "Executing command", -1);
   }
-  for (int i = 0; i < argc - 1; i++) free(cmdArgs[i]);
 }
 
 // SQLite invokes this routine once when it loads the extension. Create new
@@ -190,9 +146,6 @@ int sqlite3_extension_init(
   const sqlite3_api_routines *pApi
 ) {
   SQLITE_EXTENSION_INIT2(pApi)
-  sqlite3_create_function(db, "pipe", 1, SQLITE_UTF8, 0, pipeFunc, 0, 0);
-  sqlite3_create_function(db, "pipe", 2, SQLITE_UTF8, 0, pipeFunc, 0, 0);
-
-  sqlite3_create_function(db, "exec", -1, SQLITE_UTF8, 0, execFunc, 0, 0);
+  sqlite3_create_function(db, "pipe", -1, SQLITE_UTF8, 0, pipeFunc, 0, 0);
   return 0;
 }
