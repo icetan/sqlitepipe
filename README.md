@@ -38,18 +38,21 @@ make && make install
 This will create the extension binary and add a load command to your
 `~/.sqliterc` which will auto load `sqlitepipe` every time you run `sqlite`.
 
+You can skip `make install` and just run `.load sqlitepipe` in the `sqlite`
+REPL to only load it for that session.
+
 ## Usage
 
 The `pipe` function should now be registered in your SQLite session. The
 signature looks like this:
 
 ```
-pipe(TEXT cmd [, stdin]);
+BLOB pipe(TEXT cmd [, BLOB stdin]);
 ```
 
 The first parameter should be a string and will be evaluated with `/bin/sh -c`.
 The second parameter which is optional will be piped to `sh` through `STDIN`.
-The `STDOUT` from `sh` will then be captured and returned from `pipe`.
+The `STDOUT` from `sh` will then be captured and returned from `pipe` as `BLOB`.
 
 ## Examples
 
